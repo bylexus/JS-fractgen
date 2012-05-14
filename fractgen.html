@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+#fractCanvas {
+	width: 200px;
+	height: 300px;
+	border: 1px solid black;
+}
+</style>
+
+<script src="jquery-1.7.2.min.js"></script>
+<script type="text/javascript">
+function iter_mandelbrot(cx,cy,max_betrag_quadrat, max_iter) {
+	betrag_quadrat = 0;
+	iter = 0;
+	x = 0;
+	y = 0;
+
+	while (betrag_quadrat <= max_betrag_quadrat && iter < max_iter) {
+		xt = x * x - y*y + cx;
+		yt = 2*x*y + cy;
+		x = xt;
+		y = yt;
+		iter += 1;
+		betrag_quadrat = x*x + y*y;
+	}
+	return iter;
+
+}
+
+function iter_julia(cx,cy,max_betrag_quadrat, max_iter) {
+	betrag_quadrat = 0;
+	iter = 0;
+	x = cx;
+	y = cy;
+
+	while (betrag_quadrat <= max_betrag_quadrat && iter < max_iter) {
+		xt = x * x - y*y + 0.353;
+		yt = 2*x*y + 0.288;
+		x = xt;
+		y = yt;
+		iter += 1;
+		betrag_quadrat = x*x + y*y;
+	}
+	return iter;
+}
+
+function choose_color(iters, max_iters) {
+	var nrOfCols = colorPalette.length;
+	var perc = iters / max_iters;
+	var col = colorPalette[iters % nrOfCols];
+	if (iters >= max_iters) return {r:0,g:0,b:0};
+
+	return col;
+}
+
+
+
+var colorPalette = [];
+
+var fractParams = {
+	/* Mandelbrot Total as default params */
+	max_betrag_quadrat: 4,
+	max_iter: 40,
+	center_cx: -0.7,
+	center_cy: 0,
+	diameter_cx: 3.0769,
+	iter_func: iter_mandelbrot,
+	pic_width: 800,
+	pic_height: 600,
+	min_cx: 0.0,
+	max_cx: 0.0,
+	min_cy: 0.0,
+	max_cy: 0.0,
+	punkt_abstand: 0.0
+};
+
+/* Mandelbrot 'seahorse valley' */
+/*
+fractParams.max_betrag_quadrat = 4;
+fractParams.max_iter = 100;
+fractParams.center_cx =  -0.87591;
+fractParams.center_cy = 0.20464;
+fractParams.diameter_cx = 0.53184;
+/**/
+
+/* Mandelbrot "Seahorse" upside down */
+
+fractParams.max_betrag_quadrat = 4;
+fractParams.max_iter = 400;
+fractParams.center_cx =  -0.743030;
+fractParams.center_cy = 0.126433;
+fractParams.diameter_cx = 0.016110;
+/**/
+
+
+
+
+function drawFract() {
+	var canvas = $('#fractCanvas')[0];
+    var context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    var imageData = context.getImageData(0,0,fractParams.pic_width, fractParams.pic_height);
+    
+    console.log(imageData.data.length,imageData.width);
+    var pix_x,pix_y,cx,cy,iter_wert,col,index;
+    for (pix_x = 0; pix_x < fractParams.pic_width; pix_x++) {
+		cx = fractParams.min_cx + pix_x * fractParams.punkt_abstand; // realteil von Pixelwert errechnet (skaliert)
+		for (pix_y = 0; pix_y < fractParams.pic_height; pix_y++) {
+			cy = fractParams.min_cy + pix_y * fractParams.punkt_abstand;
+
+			iter_wert = iter_mandelbrot(cx,cy,fractParams.max_betrag_quadrat, fractParams.max_iter);
+			//iter_wert = julia_iter(cx,cy,max_betrag_quadrat, max_iter);
+			col = choose_color(iter_wert, fractParams.max_iter);
+
+			index = (pix_x + (fractParams.pic_height - pix_y - 1)* imageData.width) * 4;
+			imageData.data[index+0] = col.r;
+			imageData.data[index+1] = col.g;
+			imageData.data[index+2] = col.b;
+			imageData.data[index+3] = 255;
+		}
+	}
+	console.log(pix_x);
+	context.putImageData(imageData,0,0);
+}
+
+
+
+function init() {
+	var aspect, fract_width, fract_height;
+	$('#fractCanvas').width(fractParams.pic_width);
+	$('#fractCanvas').height(fractParams.pic_height);
+	$('#fractCanvas').attr('width',fractParams.pic_width);
+	$('#fractCanvas').attr('height',fractParams.pic_height);
+
+	aspect = fractParams.pic_width / fractParams.pic_height;
+	fract_width = fractParams.diameter_cx;
+	fract_height = fractParams.diameter_cx / aspect;
+	console.log(aspect, fract_width, fract_height);
+
+	fractParams.min_cx = fractParams.center_cx - (fract_width / 2);
+	fractParams.max_cx = fractParams.min_cx + fract_width;
+	fractParams.min_cy = fractParams.center_cy - (fract_height / 2);
+	fractParams.max_cy = fractParams.min_cy + fract_height;
+
+	fractParams.punkt_abstand = (fractParams.max_cx - fractParams.min_cx) / fractParams.pic_width;
+
+console.log(fractParams);
+
+
+	// Init color palette
+	colorPalette = [];
+	var nrOfFades = 6;
+	var stepsPerFade = fractParams.max_iter / nrOfFades;
+	var stepSize = 256 / stepsPerFade;
+
+	// Step 1: Fade from Blue to Cyan:
+	var i = 0;
+	for (i = 0; i < 256; i+=stepSize) {
+		colorPalette.push({
+			'r' : 0,
+			'g' : Math.floor(i),
+			'b' : 255
+		});
+	}
+
+	// Step 2: Fade from Cyan to Green:
+	for (i = 0; i < 256; i+=stepSize) {
+		colorPalette.push({
+			'r' : 0,
+			'g' : 255,
+			'b' : Math.floor(255 - i)
+		});
+	}
+
+	// Step 3: Fade from Green to Yellow:
+	for (i = 0; i < 256; i+=stepSize) {
+		colorPalette.push({
+			'r' : Math.floor(i),
+			'g' : 255,
+			'b' : 0
+		});
+	}
+
+	// Step 4: Fade from Yellow to Red:
+	for (i = 0; i < 256; i+=stepSize) {
+		colorPalette.push({
+			'r' : 255,
+			'g' : Math.floor(255 - i),
+			'b' : 0
+		});
+	}
+
+	// Step 5: Fade from Red to Fuchsia:
+	for (i = 0; i < 256; i+=stepSize) {
+		colorPalette.push({
+			'r' : 255,
+			'g' : 0,
+			'b' : Math.floor(i)
+		});
+	}
+
+	// Step 6: Fade from Fuchsia to White:
+	for (i = 0; i < 256; i+=stepSize) {
+		colorPalette.push({
+			'r' : 255,
+			'g' : Math.floor(i),
+			'b' : 255
+		});
+	}
+
+	drawColorPalette();
+}
+
+
+function drawColorPalette() {
+	var cont = $('#colorPalette');
+	var el;
+	var r,g,b;
+	cont.empty();
+	for (var i = 0; i < colorPalette.length; i++) {
+		r = colorPalette[i].r;
+		g = colorPalette[i].g;
+		b = colorPalette[i].b;
+		el = $('<div style="float: left; width: 20px; height: 20px; margin: 3px;background-color: rgb('+r+','+g+','+b+');"></div>');
+		cont.append(el);
+	}
+}
+
+
+$(document).ready(function(){
+	init();
+	$('#startCalcBtn').on('click',function() {
+		init();
+		drawFract();
+	});
+});
+
+</script>
+</head>
+
+<body>
+	<h1>Fractal Generator</h1>
+
+	<div id="settings">
+
+	</div>
+
+	<div id="output">
+		<canvas id="fractCanvas">
+
+		</canvas>
+		<button id="startCalcBtn">Start Calc</button>
+		<div id="colorPalette"></div>
+	</div>
+
+</body>
+</html>
