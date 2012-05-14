@@ -2,44 +2,15 @@
 
 /**
  * See http://de.wikipedia.org/wiki/Mandelbrot-Menge#Grafische_Darstellung:
- * Pseudocode:
- FOR pix_x = 1 TO max_x
-    cx = min_cx + pix_x * punkt_abstand_x
- 
-    FOR pix_y = 1 TO max_y
-      cy = min_cy + pix_y * punkt_abstand_y
- 
-      iterations_wert = punkt_iteration ( cx, cy, max_betrags_quadrat, max_iterationen )
- 
-      farb_wert = waehle_farbe ( iterations_wert, max_iterationen )
- 
-      plot pix_x pix_y farb_wert
- 
-    NEXT pix_y
-  NEXT pix_x
-
-  FUNCTION punkt_iteration (cx, cy, max_betrag_quadrat, max_iter)
- 
-   betrag_quadrat = 0
-   iter = 0
-   x = 0
-   y = 0
- 
-   WHILE ( betrag_quadrat <= max_betrag_quadrat ) AND ( iter < max_iter )
-     xt = x * x - y * y + cx
-     yt = 2 * x * y + cy
-     x = xt
-     y = yt
-     iter = iter + 1
-     betrag_quadrat = x * x + y * y
-   END
- 
-   punkt_iteration = iter
- 
- END FUNCTION
  *
  *
  */
+
+
+
+
+
+
 
 
 function mandelbrot_iter($cx,$cy,$max_betrag_quadrat, $max_iter) {
@@ -78,12 +49,18 @@ function julia_iter($cx,$cy,$max_betrag_quadrat, $max_iter) {
 
 
 function choose_color($img, $iters, $max_iters) {
+	global $colorPalette;
+	$nrOfCols = count($colorPalette);
+
 	$perc = $iters / (float)$max_iters;
+
+	//$col = $colorPalette[min($perc * $nrOfCols,$nrOfCols-1)];
+	$col = $colorPalette[$iters % $nrOfCols];
 	if ($iters >= $max_iters) return imagecolorallocate($img, 0,0,0);
 
-	$rval = (int)($perc*255); // the more iterations, the more red
-	$gval = (int)(2*$perc*255)%255;
-	$bval = (int)(4*$perc*255)%255;
+	$rval = $col['r'];
+	$gval = $col['g'];
+	$bval = $col['b'];;
 	//$gval = sin(2*pi()*$iters);
 	//$bval = 255 - (int)($perc*255); // the lesser iterations, the more blue
 	return imagecolorallocate($img, $rval, $gval,$bval);
@@ -131,6 +108,7 @@ $diameter_cx = 0.53184;
 */
 
 /* Mandelbrot "Seahorse" upside down */
+/*
 $max_betrag_quadrat = 4;
 $max_iter = 400;
 $center_cx =  -0.743030;
@@ -150,6 +128,84 @@ $max_cy = $min_cy + $fract_height;
 
 $punkt_abstand_x = ($max_cx - $min_cx) / (float)$picWidth;
 $punkt_abstand_y = ($max_cy - $min_cy) / (float)$picHeight;
+
+
+
+
+
+
+// Create the color palette: Every entry is a hash array with 'r','g','b' value.
+$colorPalette = array();
+$nrOfFades = 7;
+$stepsPerFade = $max_iter / $nrOfFades;
+$stepSize = 256 / $stepsPerFade;
+
+// Step 1: Fade from Blue to Cyan:
+for ($i = 0; $i < 256; $i+=$stepSize) {
+	$colorPalette[] = array(
+		'r' => 0,
+		'g' => $i,
+		'b' => 255
+	);
+}
+
+// Step 2: Fade from Cyan to Green:
+for ($i = 0; $i < 256; $i+=$stepSize) {
+	$colorPalette[] = array(
+		'r' => 0,
+		'g' => 255,
+		'b' => 255 - $i
+	);
+}
+
+// Step 3: Fade from Green to Yellow:
+for ($i = 0; $i < 256; $i+=$stepSize) {
+	$colorPalette[] = array(
+		'r' => $i,
+		'g' => 255,
+		'b' => 0
+	);
+}
+
+// Step 4: Fade from Yellow to Red:
+for ($i = 0; $i < 256; $i+=$stepSize) {
+	$colorPalette[] = array(
+		'r' => 255,
+		'g' => 255 - $i,
+		'b' => 0
+	);
+}
+
+// Step 5: Fade from Red to Fuchsia:
+for ($i = 0; $i < 256; $i+=$stepSize) {
+	$colorPalette[] = array(
+		'r' => 255,
+		'g' => 0,
+		'b' => $i
+	);
+}
+
+// Step 6: Fade from Fuchsia to White:
+for ($i = 0; $i < 256; $i+=$stepSize) {
+	$colorPalette[] = array(
+		'r' => 255,
+		'g' => $i,
+		'b' => 255
+	);
+}
+
+// Step 7: Fade from White to Blue:
+for ($i = 0; $i < 256; $i+=$stepSize) {
+	$colorPalette[] = array(
+		'r' => 255 - $i,
+		'g' => 255 - $i,
+		'b' => 255
+	);
+}
+
+print "Colors in palette: ".count($colorPalette)."\n";
+
+
 
 
 $img = imagecreatetruecolor($picWidth, $picHeight);
