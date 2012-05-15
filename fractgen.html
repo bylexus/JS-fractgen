@@ -3,14 +3,24 @@
 <head>
 <style type="text/css">
 #fractCanvas {
-	width: 200px;
-	height: 300px;
 	border: 1px solid black;
 }
 </style>
 
 <script src="jquery-1.7.2.min.js"></script>
 <script type="text/javascript">
+Object.prototype.clone = function() {
+  var i;
+  var newObj = (this instanceof Array) ? [] : {};
+  for (i in this) {
+    if (i == 'clone') continue;
+    if (this[i] && typeof this[i] == "object") {
+      newObj[i] = this[i].clone();
+    } else newObj[i] = this[i]
+  } return newObj;
+};
+
+
 function iter_mandelbrot(cx,cy,max_betrag_quadrat, max_iter) {
 	betrag_quadrat = 0;
 	iter = 0;
@@ -35,9 +45,12 @@ function iter_julia(cx,cy,max_betrag_quadrat, max_iter) {
 	x = cx;
 	y = cy;
 
+	var julia_cx = -0.8;
+	var julia_cy = 0.2;
+
 	while (betrag_quadrat <= max_betrag_quadrat && iter < max_iter) {
-		xt = x * x - y*y + 0.353;
-		yt = 2*x*y + 0.288;
+		xt = x * x - y*y + julia_cx;
+		yt = 2*x*y + julia_cy;
 		x = xt;
 		y = yt;
 		iter += 1;
@@ -46,11 +59,18 @@ function iter_julia(cx,cy,max_betrag_quadrat, max_iter) {
 	return iter;
 }
 
-function choose_color(iters, max_iters) {
+function choose_color(iters, max_iters,x,y) {
 	var nrOfCols = colorPalette.length;
 	var perc = iters / max_iters;
 	var col = colorPalette[iters % nrOfCols];
-	if (iters >= max_iters) return {r:0,g:0,b:0};
+	if (iters >= max_iters) {
+		if (x % 8  === 0 && y % 8 === 0)	{
+			return {r:64,g:64,b:64};
+		} else {
+			return {r:0,g:0,b:0};
+			
+		}
+	} 
 
 	return col;
 }
@@ -58,8 +78,10 @@ function choose_color(iters, max_iters) {
 
 
 var colorPalette = [];
+var hist = [];
+var initial_diameter = null;
 
-var fractParams = {
+var fractParamsMandelbrot = {
 	/* Mandelbrot Total as default params */
 	max_betrag_quadrat: 4,
 	max_iter: 40,
@@ -76,6 +98,25 @@ var fractParams = {
 	punkt_abstand: 0.0
 };
 
+var fractParamsJulia = {
+	/* Mandelbrot Total as default params */
+	max_betrag_quadrat: 4,
+	max_iter: 80,
+	center_cx: 0,
+	center_cy: 0,
+	diameter_cx: 3.0769,
+	iter_func: iter_mandelbrot,
+	pic_width: 800,
+	pic_height: 600,
+	min_cx: 0.0,
+	max_cx: 0.0,
+	min_cy: 0.0,
+	max_cy: 0.0,
+	punkt_abstand: 0.0
+};
+
+var fractParams = fractParamsMandelbrot;
+
 /* Mandelbrot 'seahorse valley' */
 /*
 fractParams.max_betrag_quadrat = 4;
@@ -86,7 +127,7 @@ fractParams.diameter_cx = 0.53184;
 /**/
 
 /* Mandelbrot "Seahorse" upside down */
-
+/*
 fractParams.max_betrag_quadrat = 4;
 fractParams.max_iter = 400;
 fractParams.center_cx =  -0.743030;
@@ -94,6 +135,49 @@ fractParams.center_cy = 0.126433;
 fractParams.diameter_cx = 0.016110;
 /**/
 
+/* Mandelbrot "Seahorse tail" */
+/*
+fractParams.max_betrag_quadrat = 4;
+fractParams.max_iter = 1000;
+fractParams.center_cx =  -0.7435669;
+fractParams.center_cy = 0.1314023;
+fractParams.diameter_cx = 0.0022878;
+/**/
+
+/* Mandelbrot "Seahorse valley" */
+/*
+fractParams.max_betrag_quadrat = 4;
+fractParams.max_iter = 3000;
+fractParams.center_cx =  -0.74364409961;
+fractParams.center_cy = 0.13182604688;
+fractParams.diameter_cx = 0.00000066208;
+/**/
+
+function pushHist(params, imageData) {
+	hist.push({
+		fractParams: params.clone(),
+		imageData: imageData
+	});
+	if (hist.length > 1) {
+		$('#backBtn').attr('disabled',false);
+	}
+}
+
+function popHist() {
+	$('#backBtn').attr('disabled',true);
+	if (hist.length > 1) {
+		var context = $('#fractCanvas')[0].getContext("2d");
+		hist.pop();
+		var h = hist[hist.length-1];
+		fractParams = h.fractParams.clone();
+		context.putImageData(h.imageData,0,0);
+		createColorPalette();
+		updateInfo();
+		if (hist.length > 1) {
+			$('#backBtn').attr('disabled',false);
+		}
+	}
+}
 
 
 
@@ -111,8 +195,8 @@ function drawFract() {
 			cy = fractParams.min_cy + pix_y * fractParams.punkt_abstand;
 
 			iter_wert = iter_mandelbrot(cx,cy,fractParams.max_betrag_quadrat, fractParams.max_iter);
-			//iter_wert = julia_iter(cx,cy,max_betrag_quadrat, max_iter);
-			col = choose_color(iter_wert, fractParams.max_iter);
+			//iter_wert = iter_julia(cx,cy,fractParams.max_betrag_quadrat, fractParams.max_iter);
+			col = choose_color(iter_wert, fractParams.max_iter,pix_x,pix_y);
 
 			index = (pix_x + (fractParams.pic_height - pix_y - 1)* imageData.width) * 4;
 			imageData.data[index+0] = col.r;
@@ -121,13 +205,28 @@ function drawFract() {
 			imageData.data[index+3] = 255;
 		}
 	}
+	pushHist(fractParams,imageData);
 	console.log(pix_x);
 	context.putImageData(imageData,0,0);
+	updateInfo();
+	
+}
+
+function updateInfo() {
+	$('#iterInfo').html(fractParams.max_iter);
+	$('#minXInfo').html(fractParams.min_cx);
+	$('#minYInfo').html(fractParams.min_cy);
+	$('#maxXInfo').html(fractParams.max_cx);
+	$('#maxYInfo').html(fractParams.max_cy);
+	$('#zoomInfo').html(initial_diameter / fractParams.diameter_cx);
+	drawColorPalette();
 }
 
 
-
 function init() {
+	if (initial_diameter == null) {
+		initial_diameter = fractParams.diameter_cx;
+	}
 	var aspect, fract_width, fract_height;
 	$('#fractCanvas').width(fractParams.pic_width);
 	$('#fractCanvas').height(fractParams.pic_height);
@@ -146,14 +245,25 @@ function init() {
 
 	fractParams.punkt_abstand = (fractParams.max_cx - fractParams.min_cx) / fractParams.pic_width;
 
-console.log(fractParams);
+	createColorPalette();
+}
 
-
+function createColorPalette() {
 	// Init color palette
 	colorPalette = [];
-	var nrOfFades = 6;
+	var nrOfFades = 7;
 	var stepsPerFade = fractParams.max_iter / nrOfFades;
 	var stepSize = 256 / stepsPerFade;
+
+	// Step 0: Fade from Black to Blue:
+	var i = 0;
+	for (i = 0; i < 256; i+=stepSize) {
+		colorPalette.push({
+			'r' : 0,
+			'g' : 0,
+			'b' : Math.floor(i)
+		});
+	}
 
 	// Step 1: Fade from Blue to Cyan:
 	var i = 0;
@@ -209,8 +319,6 @@ console.log(fractParams);
 			'b' : 255
 		});
 	}
-
-	drawColorPalette();
 }
 
 
@@ -235,6 +343,21 @@ $(document).ready(function(){
 		init();
 		drawFract();
 	});
+
+	$('#backBtn').on('click',function() {
+		popHist();
+	});
+	$('#backBtn').attr('disabled',true);
+
+	$('#fractCanvas').on('click', function(ev){
+		console.log(ev);
+		fractParams.diameter_cx *= 0.5;
+		fractParams.max_iter = (fractParams.max_iter*1.3) | 0;
+		fractParams.center_cx = fractParams.min_cx + ev.offsetX * fractParams.punkt_abstand;
+		fractParams.center_cy = fractParams.max_cy - ev.offsetY * fractParams.punkt_abstand;
+		init();
+		drawFract();
+	});
 });
 
 </script>
@@ -242,7 +365,7 @@ $(document).ready(function(){
 
 <body>
 	<h1>Fractal Generator</h1>
-
+	<p>Click into the fractal to dive deeper.</p>
 	<div id="settings">
 
 	</div>
@@ -252,6 +375,15 @@ $(document).ready(function(){
 
 		</canvas>
 		<button id="startCalcBtn">Start Calc</button>
+		<button id="backBtn">Back</button>
+		<div id="info">
+			<span>Scale level: </span><span id="zoomInfo"></span> <br />
+			<span>minX: </span><span id="minXInfo"></span> 
+			<span>minY: </span><span id="minYInfo"></span> 
+			<span>maxX: </span><span id="maxXInfo"></span> 
+			<span>maxY: </span><span id="maxYInfo"></span> 
+			<span>Iterations used:</span><span id="iterInfo"></span>
+		</div>
 		<div id="colorPalette"></div>
 	</div>
 
