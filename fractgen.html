@@ -153,6 +153,17 @@ fractParams.center_cy = 0.13182604688;
 fractParams.diameter_cx = 0.00000066208;
 /**/
 
+/* Mandelbrot my own */
+
+fractParams.max_betrag_quadrat = 4;
+fractParams.max_iter = 400;
+fractParams.center_cx =  0.20070234179688;
+fractParams.center_cy = -0.56375779101563;
+fractParams.diameter_cx = 0.02403828125;
+fractParams.pic_width =  1920;
+fractParams.pic_height =  1200;
+/**/
+
 function pushHist(params, imageData) {
 	hist.push({
 		fractParams: params.clone(),
@@ -349,6 +360,11 @@ $(document).ready(function(){
 	});
 	$('#backBtn').attr('disabled',true);
 
+	$('#savePngBtn').on('click',function() {
+		$('#outputImage')[0].src = $('#fractCanvas')[0].toDataURL('image/png');
+	});
+
+
 	$('#fractCanvas').on('click', function(ev){
 		console.log(ev);
 		fractParams.diameter_cx *= 0.5;
@@ -376,6 +392,7 @@ $(document).ready(function(){
 		</canvas>
 		<button id="startCalcBtn">Start Calc</button>
 		<button id="backBtn">Back</button>
+		<button id="savePngBtn">Save as PNG</button>
 		<div id="info">
 			<span>Scale level: </span><span id="zoomInfo"></span> <br />
 			<span>minX: </span><span id="minXInfo"></span> 
@@ -385,6 +402,8 @@ $(document).ready(function(){
 			<span>Iterations used:</span><span id="iterInfo"></span>
 		</div>
 		<div id="colorPalette"></div>
+
+		<img id="outputImage" />
 	</div>
 
 </body>
