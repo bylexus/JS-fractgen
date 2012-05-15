@@ -76,7 +76,28 @@ function choose_color(iters, max_iters,x,y) {
 }
 
 
+var baseColors = [
+	{r:0,g:0,b:30},
+	{r:0,g:0,b:255},
+	{r:180,g:180,b:30},
+	{r:255,g:255,b:255},
+	{r:255,g:0,b:0},
+	{r:0,g:0,b:30},
+	{r:255,g:255,b:255},
+	{r:230,g:0,b:230},
+	{r:0,g:0,b:30},
+	{r:255,g:0,b:0},
+	{r:255,g:255,b:0},
+	{r:255,g:255,b:255}
+/*
 
+	{r:255,g:50,b:80},
+	{r:255,g:255,b:255},
+	{r:100,g:255,b:10},
+	{r:0,g:180,b:0},
+	{r:33,g:66,b:88},
+	{r:255,g:255,b:255}*/
+];
 var colorPalette = [];
 var hist = [];
 var initial_diameter = null;
@@ -145,23 +166,25 @@ fractParams.diameter_cx = 0.0022878;
 /**/
 
 /* Mandelbrot "Seahorse valley" */
-/*
+
 fractParams.max_betrag_quadrat = 4;
 fractParams.max_iter = 3000;
+fractParams.pic_width =  1920;
+fractParams.pic_height =  1200;
 fractParams.center_cx =  -0.74364409961;
 fractParams.center_cy = 0.13182604688;
 fractParams.diameter_cx = 0.00000066208;
 /**/
 
 /* Mandelbrot my own */
-
+/*
 fractParams.max_betrag_quadrat = 4;
 fractParams.max_iter = 400;
 fractParams.center_cx =  0.20070234179688;
 fractParams.center_cy = -0.56375779101563;
 fractParams.diameter_cx = 0.02403828125;
-fractParams.pic_width =  1920;
-fractParams.pic_height =  1200;
+fractParams.pic_width =  800;
+fractParams.pic_height =  600;
 /**/
 
 function pushHist(params, imageData) {
@@ -262,74 +285,34 @@ function init() {
 function createColorPalette() {
 	// Init color palette
 	colorPalette = [];
-	var nrOfFades = 7;
-	var stepsPerFade = fractParams.max_iter / nrOfFades;
-	var stepSize = 256 / stepsPerFade;
+	var stepsPerFade = fractParams.max_iter / (baseColors.length-1);
+	var actBase;
+	var nextBase;
+	var rStep,gStep,bStep;
+	var r,g,b;
 
-	// Step 0: Fade from Black to Blue:
-	var i = 0;
-	for (i = 0; i < 256; i+=stepSize) {
-		colorPalette.push({
-			'r' : 0,
-			'g' : 0,
-			'b' : Math.floor(i)
-		});
+	for (var i = 0; i < baseColors.length - 1; i++) {
+		actBase = baseColors[i];
+		nextBase = baseColors[i+1];
+		r = actBase.r;
+		g = actBase.g;
+		b = actBase.b;
+		rStep = (nextBase.r-actBase.r) / stepsPerFade;
+		bStep = (nextBase.b-actBase.b) / stepsPerFade;
+		gStep = (nextBase.g-actBase.g) / stepsPerFade;
+		for (var j = 0; j < stepsPerFade;j++) {
+			colorPalette.push({
+				r:r|0,
+				g:g|0,
+				b:b|0
+			});
+			r += rStep;
+			g += gStep;
+			b += bStep;
+		}
 	}
 
-	// Step 1: Fade from Blue to Cyan:
-	var i = 0;
-	for (i = 0; i < 256; i+=stepSize) {
-		colorPalette.push({
-			'r' : 0,
-			'g' : Math.floor(i),
-			'b' : 255
-		});
-	}
-
-	// Step 2: Fade from Cyan to Green:
-	for (i = 0; i < 256; i+=stepSize) {
-		colorPalette.push({
-			'r' : 0,
-			'g' : 255,
-			'b' : Math.floor(255 - i)
-		});
-	}
-
-	// Step 3: Fade from Green to Yellow:
-	for (i = 0; i < 256; i+=stepSize) {
-		colorPalette.push({
-			'r' : Math.floor(i),
-			'g' : 255,
-			'b' : 0
-		});
-	}
-
-	// Step 4: Fade from Yellow to Red:
-	for (i = 0; i < 256; i+=stepSize) {
-		colorPalette.push({
-			'r' : 255,
-			'g' : Math.floor(255 - i),
-			'b' : 0
-		});
-	}
-
-	// Step 5: Fade from Red to Fuchsia:
-	for (i = 0; i < 256; i+=stepSize) {
-		colorPalette.push({
-			'r' : 255,
-			'g' : 0,
-			'b' : Math.floor(i)
-		});
-	}
-
-	// Step 6: Fade from Fuchsia to White:
-	for (i = 0; i < 256; i+=stepSize) {
-		colorPalette.push({
-			'r' : 255,
-			'g' : Math.floor(i),
-			'b' : 255
-		});
-	}
+	console.log('colors',colorPalette.length);
 }
 
 
@@ -338,11 +321,13 @@ function drawColorPalette() {
 	var el;
 	var r,g,b;
 	cont.empty();
-	for (var i = 0; i < colorPalette.length; i++) {
-		r = colorPalette[i].r;
-		g = colorPalette[i].g;
-		b = colorPalette[i].b;
-		el = $('<div style="float: left; width: 20px; height: 20px; margin: 3px;background-color: rgb('+r+','+g+','+b+');"></div>');
+	var index = 0;
+	for (var i = 0; i < 600; i++) {
+		index = Math.floor(i/600*colorPalette.length);
+		r = colorPalette[index].r;
+		g = colorPalette[index].g;
+		b = colorPalette[index].b;
+		el = $('<div style="display:inline-block; width:1px; height: 20px;background-color: rgb('+r+','+g+','+b+');"></div>');
 		cont.append(el);
 	}
 }
