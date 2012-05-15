@@ -169,8 +169,8 @@ fractParams.diameter_cx = 0.0022878;
 
 fractParams.max_betrag_quadrat = 4;
 fractParams.max_iter = 3000;
-fractParams.pic_width =  1920;
-fractParams.pic_height =  1200;
+fractParams.pic_width =  320;
+fractParams.pic_height =  200;
 fractParams.center_cx =  -0.74364409961;
 fractParams.center_cy = 0.13182604688;
 fractParams.diameter_cx = 0.00000066208;
@@ -216,33 +216,46 @@ function popHist() {
 
 
 function drawFract() {
+	var worker = new Worker('worker.js');
 	var canvas = $('#fractCanvas')[0];
     var context = canvas.getContext("2d");
+    var progressInfo = $('#progressInfo');
+
     context.clearRect(0, 0, canvas.width, canvas.height);
     var imageData = context.getImageData(0,0,fractParams.pic_width, fractParams.pic_height);
-    
-    console.log(imageData.data.length,imageData.width);
-    var pix_x,pix_y,cx,cy,iter_wert,col,index;
-    for (pix_x = 0; pix_x < fractParams.pic_width; pix_x++) {
-		cx = fractParams.min_cx + pix_x * fractParams.punkt_abstand; // realteil von Pixelwert errechnet (skaliert)
-		for (pix_y = 0; pix_y < fractParams.pic_height; pix_y++) {
-			cy = fractParams.min_cy + pix_y * fractParams.punkt_abstand;
+    worker.addEventListener('message',function(e) {
+    	if (e.data.msg === 'result') {
+    		for (var j = 0; j < e.data.data.length;j++) {
+    			col = choose_color(e.data.data[j], fractParams.max_iter,e.data.x,j);
 
-			iter_wert = iter_mandelbrot(cx,cy,fractParams.max_betrag_quadrat, fractParams.max_iter);
-			//iter_wert = iter_julia(cx,cy,fractParams.max_betrag_quadrat, fractParams.max_iter);
-			col = choose_color(iter_wert, fractParams.max_iter,pix_x,pix_y);
+				index = (e.data.x + (fractParams.pic_height - j - 1)* imageData.width) * 4;
+				imageData.data[index+0] = col.r;
+				imageData.data[index+1] = col.g;
+				imageData.data[index+2] = col.b;
+				imageData.data[index+3] = 255;
+    		}
+    		progressInfo.html(Math.floor(e.data.x/fractParams.pic_width*100)+"%");
+    	}
+    	if (e.data.msg === 'done') {
+    		pushHist(fractParams,imageData);
+    		progressInfo.html("100%");
+			context.putImageData(imageData,0,0);
+			updateInfo();
+    	}
+		
+	});
+    var msg = {
+		msg: 'start',
+		width: fractParams.pic_width,
+		height: fractParams.pic_height,
+		min_cx: fractParams.min_cx,
+		min_cy: fractParams.min_cy,
+		punkt_abstand: fractParams.punkt_abstand,
+		max_betrag_quadrat: fractParams.max_betrag_quadrat,
+		max_iter: fractParams.max_iter
+	};
+	worker.postMessage(msg);
 
-			index = (pix_x + (fractParams.pic_height - pix_y - 1)* imageData.width) * 4;
-			imageData.data[index+0] = col.r;
-			imageData.data[index+1] = col.g;
-			imageData.data[index+2] = col.b;
-			imageData.data[index+3] = 255;
-		}
-	}
-	pushHist(fractParams,imageData);
-	console.log(pix_x);
-	context.putImageData(imageData,0,0);
-	updateInfo();
 	
 }
 
@@ -379,6 +392,7 @@ $(document).ready(function(){
 		<button id="backBtn">Back</button>
 		<button id="savePngBtn">Save as PNG</button>
 		<div id="info">
+			<span>Progress:</span><span id="progressInfo"></span><br />
 			<span>Scale level: </span><span id="zoomInfo"></span> <br />
 			<span>minX: </span><span id="minXInfo"></span> 
 			<span>minY: </span><span id="minYInfo"></span> 
