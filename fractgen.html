@@ -21,60 +21,6 @@ Object.prototype.clone = function() {
 };
 
 
-function iter_mandelbrot(cx,cy,max_betrag_quadrat, max_iter) {
-	betrag_quadrat = 0;
-	iter = 0;
-	x = 0;
-	y = 0;
-
-	while (betrag_quadrat <= max_betrag_quadrat && iter < max_iter) {
-		xt = x * x - y*y + cx;
-		yt = 2*x*y + cy;
-		x = xt;
-		y = yt;
-		iter += 1;
-		betrag_quadrat = x*x + y*y;
-	}
-	return iter;
-
-}
-
-function iter_julia(cx,cy,max_betrag_quadrat, max_iter) {
-	betrag_quadrat = 0;
-	iter = 0;
-	x = cx;
-	y = cy;
-
-	var julia_cx = -0.8;
-	var julia_cy = 0.2;
-
-	while (betrag_quadrat <= max_betrag_quadrat && iter < max_iter) {
-		xt = x * x - y*y + julia_cx;
-		yt = 2*x*y + julia_cy;
-		x = xt;
-		y = yt;
-		iter += 1;
-		betrag_quadrat = x*x + y*y;
-	}
-	return iter;
-}
-
-function choose_color(iters, max_iters,x,y) {
-	var nrOfCols = colorPalette.length;
-	var perc = iters / max_iters;
-	var col = colorPalette[iters % nrOfCols];
-	if (iters >= max_iters) {
-		if (x % 8  === 0 && y % 8 === 0)	{
-			return {r:64,g:64,b:64};
-		} else {
-			return {r:0,g:0,b:0};
-			
-		}
-	} 
-
-	return col;
-}
-
 
 var baseColors = [
 	{r:0,g:0,b:30},
@@ -89,14 +35,6 @@ var baseColors = [
 	{r:255,g:0,b:0},
 	{r:255,g:255,b:0},
 	{r:255,g:255,b:255}
-/*
-
-	{r:255,g:50,b:80},
-	{r:255,g:255,b:255},
-	{r:100,g:255,b:10},
-	{r:0,g:180,b:0},
-	{r:33,g:66,b:88},
-	{r:255,g:255,b:255}*/
 ];
 var colorPalette = [];
 var hist = [];
@@ -109,7 +47,7 @@ var fractParamsMandelbrot = {
 	center_cx: -0.7,
 	center_cy: 0,
 	diameter_cx: 3.0769,
-	iter_func: iter_mandelbrot,
+	iter_func: 'mandelbrot',
 	pic_width: 800,
 	pic_height: 600,
 	min_cx: 0.0,
@@ -126,7 +64,7 @@ var fractParamsJulia = {
 	center_cx: 0,
 	center_cy: 0,
 	diameter_cx: 3.0769,
-	iter_func: iter_mandelbrot,
+	iter_func: 'julia',
 	pic_width: 800,
 	pic_height: 600,
 	min_cx: 0.0,
@@ -137,6 +75,7 @@ var fractParamsJulia = {
 };
 
 var fractParams = fractParamsMandelbrot;
+//var fractParams = fractParamsJulia;
 
 /* Mandelbrot 'seahorse valley' */
 /*
@@ -166,11 +105,11 @@ fractParams.diameter_cx = 0.0022878;
 /**/
 
 /* Mandelbrot "Seahorse valley" */
-
+/*
 fractParams.max_betrag_quadrat = 4;
 fractParams.max_iter = 3000;
-fractParams.pic_width =  320;
-fractParams.pic_height =  200;
+fractParams.pic_width =  1440;
+fractParams.pic_height =  900;
 fractParams.center_cx =  -0.74364409961;
 fractParams.center_cy = 0.13182604688;
 fractParams.diameter_cx = 0.00000066208;
@@ -216,56 +155,96 @@ function popHist() {
 
 
 function drawFract() {
-	var worker = new Worker('worker.js');
+	var workers = [];
+	var worker;
+	var i;
+	var nrOfWorkers = 2;
 	var canvas = $('#fractCanvas')[0];
     var context = canvas.getContext("2d");
-    var progressInfo = $('#progressInfo');
+    var imageData;
+    var startTime;
+    var endTime;
 
     context.clearRect(0, 0, canvas.width, canvas.height);
-    var imageData = context.getImageData(0,0,fractParams.pic_width, fractParams.pic_height);
-    worker.addEventListener('message',function(e) {
-    	if (e.data.msg === 'result') {
-    		for (var j = 0; j < e.data.data.length;j++) {
-    			col = choose_color(e.data.data[j], fractParams.max_iter,e.data.x,j);
+    imageData = context.getImageData(0,0,fractParams.pic_width, fractParams.pic_height);
 
-				index = (e.data.x + (fractParams.pic_height - j - 1)* imageData.width) * 4;
-				imageData.data[index+0] = col.r;
-				imageData.data[index+1] = col.g;
-				imageData.data[index+2] = col.b;
-				imageData.data[index+3] = 255;
-    		}
-    		progressInfo.html(Math.floor(e.data.x/fractParams.pic_width*100)+"%");
-    	}
-    	if (e.data.msg === 'done') {
-    		pushHist(fractParams,imageData);
-    		progressInfo.html("100%");
-			context.putImageData(imageData,0,0);
-			updateInfo();
-    	}
-		
-	});
-    var msg = {
-		msg: 'start',
-		width: fractParams.pic_width,
-		height: fractParams.pic_height,
-		min_cx: fractParams.min_cx,
-		min_cy: fractParams.min_cy,
-		punkt_abstand: fractParams.punkt_abstand,
-		max_betrag_quadrat: fractParams.max_betrag_quadrat,
-		max_iter: fractParams.max_iter
-	};
-	worker.postMessage(msg);
+    startTime = new Date();
+    $('#progressBars').empty();
+	for (i = 0; i < nrOfWorkers; i++) {
+		worker = new Worker('fractWorker.js');
+		workers.push({worker:worker,done: false});
+
+		$('#progressBars').append('<div>Progress Worker '+i+': <div style="display:inline-block;border:1px solid #888;width: 400px;"><div id="progress'+i+'" style="width: 0%;background-color: blue;">&nbsp;</div></div><img id="loader'+i+'" src="loader.gif" border="" /></div>');
+
+		(function(w,windex){
+			var pBar = $('#progress'+windex);
+			w.addEventListener('message',function(e) {
+		    	if (e.data.msg === 'result') {
+		    		for (var j = 0; j < e.data.data.length;j++) {
+		    			col = e.data.data[j];
+						index = (e.data.x + (fractParams.pic_height - (e.data.params.from_y+j) - 1)* imageData.width) * 4;
+						imageData.data[index+0] = col.r;
+						imageData.data[index+1] = col.g;
+						imageData.data[index+2] = col.b;
+						imageData.data[index+3] = 255;
+		    		}
+		    		if (e.data.x % 30 === 0) {
+		    			// only update progress bar every 30th result:
+		    			pBar.css('width',Math.floor(e.data.done*100)+"%");
+		    			//pBar.html(Math.floor(e.data.done*100)+"%");
+		    		}
+		    		
+		    	}
+		    	if (e.data.msg === 'done') {
+		    		workers[e.data.worker].done = true;
+		    		pBar.css('width',"100%");
+		    		$('#loader'+e.data.worker).hide();
+		    		var checkDone = true;
+		    		for (var wi = 0; wi < workers.length;wi++) {
+		    			if (workers[wi].done !== true) {
+		    				checkDone = false;
+		    			}
+		    		}
+		    		if (checkDone) {
+		    			pushHist(fractParams,imageData);
+		    			context.putImageData(imageData,0,0);
+		    			endTime = new Date();
+						updateInfo(endTime.getTime() - startTime.getTime());
+		    		}
+		    	}
+			
+			});
+		    var msg = {
+				msg: 'start',
+				worker: windex,
+				fractParams: fractParams,
+				from_x: ((fractParams.pic_width/nrOfWorkers)|0)*i,
+				from_y: 0,
+				to_x: ((fractParams.pic_width/nrOfWorkers)|0)*(i+1)-1,
+				to_y: fractParams.pic_height-1,
+				colors: colorPalette
+			};
+			w.postMessage(msg);
+		})(worker,i);
+	}
+
+	
+	
+
+    
+    
 
 	
 }
 
-function updateInfo() {
+function updateInfo(milisecsUsed) {
 	$('#iterInfo').html(fractParams.max_iter);
 	$('#minXInfo').html(fractParams.min_cx);
 	$('#minYInfo').html(fractParams.min_cy);
 	$('#maxXInfo').html(fractParams.max_cx);
 	$('#maxYInfo').html(fractParams.max_cy);
 	$('#zoomInfo').html(initial_diameter / fractParams.diameter_cx);
+	$('#timeInfo').html(milisecsUsed + " ms");
 	drawColorPalette();
 }
 
@@ -392,7 +371,10 @@ $(document).ready(function(){
 		<button id="backBtn">Back</button>
 		<button id="savePngBtn">Save as PNG</button>
 		<div id="info">
-			<span>Progress:</span><span id="progressInfo"></span><br />
+			<div id="progressBars">
+			</div>
+			
+			<span>Time used:</span><span id="timeInfo"></span><br />
 			<span>Scale level: </span><span id="zoomInfo"></span> <br />
 			<span>minX: </span><span id="minXInfo"></span> 
 			<span>minY: </span><span id="minYInfo"></span> 
