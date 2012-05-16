@@ -343,11 +343,17 @@ $(document).ready(function(){
 
 
 	$('#fractCanvas').on('click', function(ev){
+		var offsetX, offsetY;
+
 		console.log(ev);
 		fractParams.diameter_cx *= 0.5;
 		fractParams.max_iter = (fractParams.max_iter*1.3) | 0;
-		fractParams.center_cx = fractParams.min_cx + ev.offsetX * fractParams.punkt_abstand;
-		fractParams.center_cy = fractParams.max_cy - ev.offsetY * fractParams.punkt_abstand;
+
+		offsetX = ev.pageX - $(this).offset().left;
+		offsetY = ev.pageY - $(this).offset().top;
+
+		fractParams.center_cx = fractParams.min_cx + offsetX * fractParams.punkt_abstand;
+		fractParams.center_cy = fractParams.max_cy - offsetY * fractParams.punkt_abstand;
 		init();
 		drawFract();
 	});
