@@ -12,7 +12,7 @@ self.addEventListener('message',function(e) {
 
 
 
-function choose_color(iters, max_iters,x,y) {
+function choose_color(iters, max_iters,x,y,betrag_quadrat) {
 	var nrOfCols = colors.length;
 	var perc = iters / max_iters;
 	var col = colors[iters % nrOfCols];
@@ -44,7 +44,7 @@ function iter_mandelbrot(cx,cy,max_betrag_quadrat, max_iter) {
 		iter += 1;
 		betrag_quadrat = x*x + y*y;
 	}
-	return iter;
+	return {iterations: iter,betrag_quadrat:betrag_quadrat};
 
 }
 
@@ -65,7 +65,7 @@ function iter_julia(cx,cy,max_betrag_quadrat, max_iter) {
 		iter += 1;
 		betrag_quadrat = x*x + y*y;
 	}
-	return iter;
+	return {iterations: iter,betrag_quadrat:betrag_quadrat};
 }
 
 
@@ -73,7 +73,7 @@ function iter_julia(cx,cy,max_betrag_quadrat, max_iter) {
 
 function calcFract(params) {
 	var width,height,from_x,to_x,from_y,to_y,min_cx,min_cy,punkt_abstand,max_betrag_quadrat,max_iter,iter_func_txt;
-	var pix_x,pix_y,cx,cy,iter_wert,index;
+	var pix_x,pix_y,cx,cy,iter_wert,res,punkt_iteration,index;
 	var col = [];
 	var iter_func = iter_mandelbrot;
 	var percDone;
@@ -103,8 +103,9 @@ function calcFract(params) {
 		for (pix_y = from_y; pix_y <= to_y; pix_y++) {
 			cy = min_cy + pix_y * punkt_abstand;
 
-			iter_wert = iter_func(cx,cy,max_betrag_quadrat, max_iter);
-			col.push(choose_color(iter_wert, max_iter,pix_x,pix_y));
+			res = iter_func(cx,cy,max_betrag_quadrat, max_iter);
+			iter_wert = res.iterations;
+			col.push(choose_color(iter_wert, max_iter,pix_x,pix_y,res.betrag_quadrat));
 		}
 		percDone = (pix_x-from_x) / calcWidth;
 		self.postMessage({msg: 'result',x:pix_x,data: col,params: params,done:percDone});

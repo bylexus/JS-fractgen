@@ -1,7 +1,65 @@
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="stylesheet" href="css/yaml/core/base.css" type="text/css" />
+<link rel="stylesheet" href="css/yaml/screen/typography.css" type="text/css" />
+<link rel="stylesheet" href="css/yaml/forms/gray-theme.css" type="text/css" />  
+
+
 <style type="text/css">
+/*
+ * |-------------------------------------------------------|
+ * | sidebar         |    content                          |
+ * | col 3 | fixed   |    col 1 | flexible                 |
+ * |                 |                                     |
+ * |-------------------------------------------------------|
+ */
+
+.ym-column {
+  display: block;
+  overflow: hidden;
+  padding-left: 300px; /* column width */
+  width: auto;
+}
+
+.ym-col1 {  /* content */
+  position: relative;
+  float: left;
+  width: 100%;
+}
+
+.ym-col3 { /* sidebar */
+  position: relative;
+  float: left;
+  width: 300px; /* column width */
+  right: 300px; /* column width */
+  *right: 0px; /* fix for ie6 & ie7 */
+  margin: 0 0 0 -100%;
+}
+
+
+.settings {
+	background-color: #DDD;
+	border-right: 1px solid #888;
+	font-size: 10pt;
+	color: #666;
+}
+.settings h1 {
+	font-size: 12pt;
+	font-weight: bold;
+	color: #666;
+}
+.settings h2 {
+	font-size: 10pt;
+	font-weight: bold;
+	color: #666;
+} 
+
+
+
+
+
+
 #fractCanvas {
 	border: 1px solid black;
 }
@@ -20,13 +78,26 @@ Object.prototype.clone = function() {
   } return newObj;
 };
 
+var ObjectMerge = function(obj1, obj2) {
+	var newObj = {};
+	var i;
+	for (i in obj1) {
+		newObj[i] = obj1[i];
+	}
+	for (i in obj2) {
+		newObj[i] = obj2[i];
+	}
+	return newObj;
+}
 
 
 var baseColors = [
 	{r:0,g:0,b:30},
+	{r:253,g:204,b:6},
+	{r:186,g:84,b:15},
 	{r:0,g:0,b:255},
 	{r:180,g:180,b:30},
-	{r:255,g:255,b:255},
+	{r:103,g:61,b:135},
 	{r:255,g:0,b:0},
 	{r:0,g:0,b:30},
 	{r:255,g:255,b:255},
@@ -36,9 +107,23 @@ var baseColors = [
 	{r:255,g:255,b:0},
 	{r:255,g:255,b:255}
 ];
+
+baseColors = [
+	{r:0,g:0,b:30},
+	{r:128,g:128,b:255},
+	{r:200,g:200,b:255},
+	{r:64,g:64,b:192},
+	{r:0,g:0,b:30}
+];
+/**/
 var colorPalette = [];
 var hist = [];
 var initial_diameter = null;
+
+
+
+
+
 
 var fractParamsMandelbrot = {
 	/* Mandelbrot Total as default params */
@@ -54,7 +139,8 @@ var fractParamsMandelbrot = {
 	max_cx: 0.0,
 	min_cy: 0.0,
 	max_cy: 0.0,
-	punkt_abstand: 0.0
+	punkt_abstand: 0.0,
+	nrOfWorkers: 2
 };
 
 var fractParamsJulia = {
@@ -71,8 +157,39 @@ var fractParamsJulia = {
 	max_cx: 0.0,
 	min_cy: 0.0,
 	max_cy: 0.0,
-	punkt_abstand: 0.0
+	punkt_abstand: 0.0,
+	nrOfWorkers: 2
 };
+
+
+
+var presets = {
+	mandelbrot_total: ObjectMerge(fractParamsMandelbrot,{
+		name: 'Mandelbrot Total'
+	}),
+	mandelbrot_seahorse_valley: ObjectMerge(fractParamsMandelbrot,{
+		name: 'Mandelbrot Seahorse Valley',
+		max_iter: 100,
+		center_cx:  -0.87591,
+		center_cy:  0.20464,
+		diameter_cx:0.53184
+	}),
+
+
+
+
+	julia_total: ObjectMerge(fractParamsJulia, {
+		name: 'Julia Total'
+	})
+
+};
+
+
+
+
+
+
+
 
 var fractParams = fractParamsMandelbrot;
 //var fractParams = fractParamsJulia;
@@ -98,21 +215,35 @@ fractParams.diameter_cx = 0.016110;
 /* Mandelbrot "Seahorse tail" */
 /*
 fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 1000;
+fractParams.max_iter = 500;
 fractParams.center_cx =  -0.7435669;
 fractParams.center_cy = 0.1314023;
 fractParams.diameter_cx = 0.0022878;
+fractParams.pic_width = 800;
+fractParams.pic_height = 600;
 /**/
 
 /* Mandelbrot "Seahorse valley" */
 /*
 fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 3000;
-fractParams.pic_width =  1440;
-fractParams.pic_height =  900;
+fractParams.max_iter = 3500;
+fractParams.pic_width =  1980;
+fractParams.pic_height =  1200;
 fractParams.center_cx =  -0.74364409961;
 fractParams.center_cy = 0.13182604688;
 fractParams.diameter_cx = 0.00000066208;
+/**/
+
+/* Mandelbrot "Antenna satelite" */
+/*
+fractParams.max_betrag_quadrat = 4;
+fractParams.max_iter = 3000;
+fractParams.pic_width =  600;
+fractParams.pic_height =  400;
+fractParams.center_cx =  -0.743644786;
+fractParams.center_cy = 0.1318252536;
+fractParams.diameter_cx = .0000029336;
+fractParams.nrOfWorkers = 4;
 /**/
 
 /* Mandelbrot my own */
@@ -158,7 +289,7 @@ function drawFract() {
 	var workers = [];
 	var worker;
 	var i;
-	var nrOfWorkers = 2;
+	var nrOfWorkers = fractParams.nrOfWorkers || 2;
 	var canvas = $('#fractCanvas')[0];
     var context = canvas.getContext("2d");
     var imageData;
@@ -211,6 +342,9 @@ function drawFract() {
 		    			endTime = new Date();
 						updateInfo(endTime.getTime() - startTime.getTime());
 		    		}
+		    	}
+		    	if (e.data.msg === 'log') {
+		    		console.log(e.data.data);
 		    	}
 			
 			});
@@ -324,8 +458,49 @@ function drawColorPalette() {
 	}
 }
 
+function loadPreset(preset) {
+	$('#pic_width').val(preset.pic_width);
+	$('#pic_height').val(preset.pic_height);
+
+	$('#center_cx').val(preset.center_cx);
+	$('#center_cy').val(preset.center_cy);
+
+	$('#diameter_x').val(preset.diameter_cx);
+
+	$('#max_iter').val(preset.max_iter);
+	$('#max_betrag_quadrat').val(preset.max_betrag_quadrat);
+	$('#iter_func').val(preset.iter_func);
+	$('#nr_of_workers').val(preset.nrOfWorkers);
+}
+
+
+function onPageReady() {
+	var i;
+	
+	// Fill presets select:
+	var presetsSelect = $('#presets').empty();
+	var el;
+	for (i in presets) {
+		if (typeof i === 'string') {
+			el = $('<option value="'+i+'">'+presets[i].name+'</option>');
+			presetsSelect.append(el);
+		}
+	}
+	loadPreset(presets[presetsSelect.first().val()]);
+	presetsSelect.on('change',function() {
+		loadPreset(presets[$(this).val()]);
+	});
+
+}
+
 
 $(document).ready(function(){
+	onPageReady();
+
+
+
+
+
 	init();
 	$('#startCalcBtn').on('click',function() {
 		init();
@@ -363,35 +538,125 @@ $(document).ready(function(){
 </head>
 
 <body>
-	<h1>Fractal Generator using HTML5/WebWorkers</h1>
-	<p>Click into the fractal to dive deeper.</p>
-	<div id="settings">
+	
 
+		
+
+
+	<header>
+		<div class="ym-wrapper">
+	      	<div class="ym-wbox">
+			    <h1>Fractal Generator using HTML5/WebWorkers</h1>
+				<p>Click into the fractal to dive deeper.</p>
+	      	</div>
+      	</div>
+		
+	</header>
+
+	<div class="ym-column">
+  		<div class="ym-col1">
+		    <div class="ym-cbox">
+					<div id="output">
+						<canvas id="fractCanvas">
+
+						</canvas>
+						
+						<div id="info">
+							<div id="progressBars">
+							</div>
+							
+							<span>Time used:</span><span id="timeInfo"></span><br />
+							<span>Scale level: </span><span id="zoomInfo"></span> <br />
+							<span>minX: </span><span id="minXInfo"></span> 
+							<span>minY: </span><span id="minYInfo"></span> 
+							<span>maxX: </span><span id="maxXInfo"></span> 
+							<span>maxY: </span><span id="maxYInfo"></span> 
+							<span>Iterations used:</span><span id="iterInfo"></span>
+						</div>
+						<div id="colorPalette"></div>
+
+						<img id="outputImage" />
+					</div>
+				</div>
+		    </div>
+	  	
+
+
+
+	  	<!-- S I D E B A R -->
+	  	<div class="ym-col3 settings">
+		    <div class="ym-cbox">
+				<h1>Fractal settings</h1>
+				
+				<form class="ym-form ym-columnar" onsubmit="return false">
+					<h2>Dimension</h2>
+					<div class="ym-fbox-text">
+					  <label for="pic_width">Pixel W:</label>
+					  <input type="text" name="pic_width" id="pic_width" />
+					</div>
+					<div class="ym-fbox-text">
+					  <label for="pic_height">Pixel H:</label>
+					  <input type="text" name="pic_height" id="pic_height" />
+					</div>
+					<div class="ym-fbox-text">
+					  <label for="center_cx">Center cx:</label>
+					  <input type="text" name="center_cx" id="center_cx" />
+					</div>
+					<div class="ym-fbox-text">
+					  <label for="center_cy">Center cy:</label>
+					  <input type="text" name="center_cy" id="center_cy" />
+					</div>
+					<div class="ym-fbox-text">
+					  <label for="diameter_x">Diameter x:</label>
+					  <input type="text" name="diameter_x" id="diameter_x" />
+					</div>
+
+					<h2>Calculation settings</h2>
+					<div class="ym-fbox-text">
+					  <label for="max_iter">max. Iters:</label>
+					  <input type="text" name="max_iter" id="max_iter" />
+					</div>
+					<div class="ym-fbox-text">
+					  <label for="max_betrag_quadrat">max. |Z|^2:</label>
+					  <input type="text" name="max_betrag_quadrat" id="max_betrag_quadrat" />
+					</div>
+					<div class="ym-fbox-select">
+					  <label for="iter_func">Function:</label>
+					  <select id="iter_func" name="iter_func">
+					  	<option value="mandelbrot">Mandelbrot</option>
+					  	<option value="julia">Julia</option>
+					  </select>
+					</div>
+					<div class="ym-fbox-text">
+					  <label for="nr_of_workers"># Workers:</label>
+					  <input type="text" name="nr_of_workers" id="nr_of_workers" />
+					</div>
+					<div class="ym-fbox-button">
+						<button id="startCalcBtn" class="ym-play">Start Calc</button><br />
+						<button id="backBtn">Back</button>
+						<button id="savePngBtn">Save as PNG</button>
+					</div>
+				</form>
+
+				<h2>Presets</h2>
+				<form class="ym-form ym-columnar" onsubmit="return false">
+					<h2>Fractals</h2>
+					<div class="ym-fbox-select">
+						<select id="presets" name="presets">
+
+						</select>
+					</div>
+					<h2>Color Schemes</h2>
+					<div class="ym-fbox-select">
+						<select id="presets" name="colors">
+
+						</select>
+					</div>
+				</form>
+		    </div>
+	  	</div>
 	</div>
-
-	<div id="output">
-		<canvas id="fractCanvas">
-
-		</canvas>
-		<button id="startCalcBtn">Start Calc</button>
-		<button id="backBtn">Back</button>
-		<button id="savePngBtn">Save as PNG</button>
-		<div id="info">
-			<div id="progressBars">
-			</div>
-			
-			<span>Time used:</span><span id="timeInfo"></span><br />
-			<span>Scale level: </span><span id="zoomInfo"></span> <br />
-			<span>minX: </span><span id="minXInfo"></span> 
-			<span>minY: </span><span id="minYInfo"></span> 
-			<span>maxX: </span><span id="maxXInfo"></span> 
-			<span>maxY: </span><span id="maxYInfo"></span> 
-			<span>Iterations used:</span><span id="iterInfo"></span>
-		</div>
-		<div id="colorPalette"></div>
-
-		<img id="outputImage" />
-	</div>
+		
 
 </body>
 </html>
