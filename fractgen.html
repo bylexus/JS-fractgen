@@ -38,13 +38,33 @@
 }
 
 
+body {
+	padding: 5px;
+}
+
+h1 {
+	font-size: 16pt;
+}
+
+p {
+	margin-top: 0.3em;
+}
+
+header {
+	background-color: #EEE;
+	border: 1px solid #AAA;
+	margin-bottom: 1em;
+	padding: 3px;
+}
+
+
 .settings {
-	background-color: #DDD;
-	border-right: 1px solid #888;
+	background-color: #EEE;
+	border: 1px solid #AAA;
 	font-size: 10pt;
 	color: #666;
 }
-.settings h1 {
+.settings h1,.fractContainer h1 {
 	font-size: 12pt;
 	font-weight: bold;
 	color: #666;
@@ -58,10 +78,18 @@
 
 
 
-
+.fractContainer,.info {
+	padding: 3px;
+	background-color: #EEE;
+	border: 1px solid #AAA;
+}
 
 #fractCanvas {
-	border: 1px solid black;
+	border: 1px solid #AAA;
+}
+
+.fractContainer {
+	font-family: courier;
 }
 </style>
 
@@ -175,6 +203,33 @@ var presets = {
 		diameter_cx:0.53184
 	}),
 
+	mandelbrot_seahorse_upside_down: ObjectMerge(fractParamsMandelbrot,{
+		name: 'Mandelbrot Seahorse Upside Down',
+		max_iter: 400,
+		center_cx:  -0.743030,
+		center_cy:  0.126433,
+		diameter_cx:0.016110
+	}),
+
+	mandelbrot_seahorse_tail: ObjectMerge(fractParamsMandelbrot,{
+		name: 'Mandelbrot Seahorse Tail',
+		max_iter: 500,
+		center_cx:  -0.7435669,
+		center_cy:  0.1314023,
+		diameter_cx:0.0022878
+	}),
+
+
+/* Mandelbrot "Seahorse tail" */
+/*
+fractParams.max_betrag_quadrat = 4;
+fractParams.max_iter = 500;
+fractParams.center_cx =  -0.7435669;
+fractParams.center_cy = 0.1314023;
+fractParams.diameter_cx = 0.0022878;
+fractParams.pic_width = 800;
+fractParams.pic_height = 600;
+/**/
 
 
 
@@ -191,37 +246,12 @@ var presets = {
 
 
 
-var fractParams = fractParamsMandelbrot;
+var fractParams = {};
 //var fractParams = fractParamsJulia;
 
-/* Mandelbrot 'seahorse valley' */
-/*
-fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 100;
-fractParams.center_cx =  -0.87591;
-fractParams.center_cy = 0.20464;
-fractParams.diameter_cx = 0.53184;
-/**/
 
-/* Mandelbrot "Seahorse" upside down */
-/*
-fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 400;
-fractParams.center_cx =  -0.743030;
-fractParams.center_cy = 0.126433;
-fractParams.diameter_cx = 0.016110;
-/**/
 
-/* Mandelbrot "Seahorse tail" */
-/*
-fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 500;
-fractParams.center_cx =  -0.7435669;
-fractParams.center_cy = 0.1314023;
-fractParams.diameter_cx = 0.0022878;
-fractParams.pic_width = 800;
-fractParams.pic_height = 600;
-/**/
+
 
 /* Mandelbrot "Seahorse valley" */
 /*
@@ -274,9 +304,12 @@ function popHist() {
 		hist.pop();
 		var h = hist[hist.length-1];
 		fractParams = h.fractParams.clone();
+		loadPreset(fractParams);
+		init();
 		context.putImageData(h.imageData,0,0);
 		createColorPalette();
 		updateInfo();
+
 		if (hist.length > 1) {
 			$('#backBtn').attr('disabled',false);
 		}
@@ -384,6 +417,19 @@ function updateInfo(milisecsUsed) {
 
 
 function init() {
+	fractParams = presets[$('#presets').val()].clone();
+	fractParams.pic_width = Number($('#pic_width').val());
+	fractParams.pic_height = Number($('#pic_height').val());
+
+	fractParams.center_cx = Number($('#center_cx').val());
+	fractParams.center_cy = Number($('#center_cy').val());
+
+	fractParams.diameter_cx = Number($('#diameter_x').val());
+	fractParams.max_iter = Number($('#max_iter').val());
+	fractParams.max_betrag_quadrat = Number($('#max_betrag_quadrat').val());
+	fractParams.iter_func = $('#iter_func').val();
+	fractParams.nrOfWorkers = Number($('#nr_of_workers').val());
+
 	if (initial_diameter == null) {
 		initial_diameter = fractParams.diameter_cx;
 	}
@@ -406,6 +452,7 @@ function init() {
 	fractParams.punkt_abstand = (fractParams.max_cx - fractParams.min_cx) / fractParams.pic_width;
 
 	createColorPalette();
+	drawColorPalette();
 }
 
 function createColorPalette() {
@@ -437,8 +484,6 @@ function createColorPalette() {
 			b += bStep;
 		}
 	}
-
-	console.log('colors',colorPalette.length);
 }
 
 
@@ -446,10 +491,11 @@ function drawColorPalette() {
 	var cont = $('#colorPalette');
 	var el;
 	var r,g,b;
+	var paletteWidth = 800;
 	cont.empty();
 	var index = 0;
-	for (var i = 0; i < 600; i++) {
-		index = Math.floor(i/600*colorPalette.length);
+	for (var i = 0; i < paletteWidth; i++) {
+		index = Math.floor(i/paletteWidth*colorPalette.length);
 		r = colorPalette[index].r;
 		g = colorPalette[index].g;
 		b = colorPalette[index].b;
@@ -457,6 +503,7 @@ function drawColorPalette() {
 		cont.append(el);
 	}
 }
+
 
 function loadPreset(preset) {
 	$('#pic_width').val(preset.pic_width);
@@ -491,6 +538,8 @@ function onPageReady() {
 		loadPreset(presets[$(this).val()]);
 	});
 
+	init();
+
 }
 
 
@@ -498,10 +547,6 @@ $(document).ready(function(){
 	onPageReady();
 
 
-
-
-
-	init();
 	$('#startCalcBtn').on('click',function() {
 		init();
 		drawFract();
@@ -521,14 +566,15 @@ $(document).ready(function(){
 		var offsetX, offsetY;
 
 		console.log(ev);
-		fractParams.diameter_cx *= 0.5;
-		fractParams.max_iter = (fractParams.max_iter*1.3) | 0;
+
+		$('#diameter_x').val($('#diameter_x').val()*0.5);
+		$('#max_iter').val(($('#max_iter').val()*1.3)|0);
 
 		offsetX = ev.pageX - $(this).offset().left;
 		offsetY = ev.pageY - $(this).offset().top;
 
-		fractParams.center_cx = fractParams.min_cx + offsetX * fractParams.punkt_abstand;
-		fractParams.center_cy = fractParams.max_cy - offsetY * fractParams.punkt_abstand;
+		$('#center_cx').val(fractParams.min_cx + offsetX * fractParams.punkt_abstand);
+		$('#center_cy').val(fractParams.max_cy - offsetY * fractParams.punkt_abstand);
 		init();
 		drawFract();
 	});
@@ -547,7 +593,10 @@ $(document).ready(function(){
 		<div class="ym-wrapper">
 	      	<div class="ym-wbox">
 			    <h1>Fractal Generator using HTML5/WebWorkers</h1>
-				<p>Click into the fractal to dive deeper.</p>
+			    <p>My implementatoin of a iterative fractal generator, using HTML5 technologies / JavaScript only.
+			    	This fractal generator runs completely in your browser, using WebWorkers and Canvas.
+			    </p><p>Please understand that this fractal generator <strong>only runs in Chrome and Firefox</strong>, as long as the other browsers do not support the HTML5 canvas and web workers elements.</p>
+				<p>Just hit "Start Calc" below to begin. Click into the fractal to dive deeper.</p>
 	      	</div>
       	</div>
 		
@@ -557,23 +606,26 @@ $(document).ready(function(){
   		<div class="ym-col1">
 		    <div class="ym-cbox">
 					<div id="output">
-						<canvas id="fractCanvas">
-
-						</canvas>
-						
-						<div id="info">
-							<div id="progressBars">
-							</div>
-							
-							<span>Time used:</span><span id="timeInfo"></span><br />
+						<div class="fractContainer">
+							<h1>Fractal output</h2>
 							<span>Scale level: </span><span id="zoomInfo"></span> <br />
 							<span>minX: </span><span id="minXInfo"></span> 
 							<span>minY: </span><span id="minYInfo"></span> 
 							<span>maxX: </span><span id="maxXInfo"></span> 
 							<span>maxY: </span><span id="maxYInfo"></span> 
+							<div id="colorPalette"></div>
+						
+							<canvas id="fractCanvas"></canvas>
+
+						
+						
+							<div id="progressBars">
+							</div>
+							
+							<span>Time used:</span><span id="timeInfo"></span><br />
 							<span>Iterations used:</span><span id="iterInfo"></span>
+							
 						</div>
-						<div id="colorPalette"></div>
 
 						<img id="outputImage" />
 					</div>
