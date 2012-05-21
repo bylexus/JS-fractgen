@@ -17,12 +17,15 @@ function choose_color(iters, max_iters,x,y,betrag_quadrat) {
 	var perc = iters / max_iters;
 	var col = colors[iters % nrOfCols];
 	if (iters >= max_iters) {
+		/*
 		if (x % 8  === 0 && y % 8 === 0)	{
 			return {r:64,g:64,b:64};
 		} else {
 			return {r:0,g:0,b:0};
 			
-		}
+		}*/
+		return {r:0,g:0,b:0};
+		
 	}
 
 	return col;

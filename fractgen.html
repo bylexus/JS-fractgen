@@ -68,11 +68,20 @@ footer {
 	border: 1px solid #AAA;
 	font-size: 10pt;
 	color: #666;
+	padding-bottom: 5px;
 }
+
+.settings form {
+	margin: 0;
+}
+
 .settings h1,.fractContainer h1 {
 	font-size: 12pt;
 	font-weight: bold;
 	color: #666;
+	margin: 0;
+	margin-top: 1em;
+	margin-bottom: 0.2em;
 }
 .settings h2 {
 	font-size: 10pt;
@@ -124,7 +133,9 @@ var ObjectMerge = function(obj1, obj2) {
 }
 
 
-var baseColors = [
+var colorPresets = [{
+	name: 'Patchwork',
+	colors: [
 	{r:0,g:0,b:30},
 	{r:253,g:204,b:6},
 	{r:186,g:84,b:15},
@@ -139,16 +150,58 @@ var baseColors = [
 	{r:255,g:0,b:0},
 	{r:255,g:255,b:0},
 	{r:255,g:255,b:255}
+	]},{
+		name: 'Shades of Blue',
+		colors: [
+		{r:0,g:0,b:30},
+		{r:128,g:128,b:255},
+		{r:200,g:200,b:255},
+		{r:64,g:64,b:192},
+		{r:0,g:0,b:30}
+	]}, {
+		name: "Women's Choice",
+		colors: [
+			{r:30,g:5,b:25},
+			{r:255,g:102,b:204},
+			{r:255,g:179,b:232},
+			{r:128,g:0,b:89},
+			{r:255,g:204,b:255}
+		]
+	}, {
+		name: "Black or White",
+		colors: [
+			{r:0,g:0,b:0},
+			{r:60,g:60,b:60},
+			{r:255,g:255,b:255},
+			{r:60,g:60,b:60},
+			{r:0,g:0,b:0},
+			{r:255,g:255,b:255}
+		]
+	}, {
+		name: "Nature",
+		colors: [
+			{r:0,g:51,b:102},
+			{r:99,g:255,b:20},
+			{r:255,g:255,b:255},
+			{r:102,g:51,b:0},
+			{r:255,g:255,b:143}
+		]
+	}, {
+		name: "Base Colors",
+		colors: [
+			{r:0,g:0,b:0},
+			{r:0,g:0,b:255},
+			{r:255,g:0,b:255},
+			{r:255,g:0,b:0},
+			{r:255,g:255,b:0},
+			{r:0,g:255,b:0},
+			{r:0,g:255,b:255},
+			{r:255,g:255,b:255}
+		]
+	}
 ];
 
-baseColors = [
-	{r:0,g:0,b:30},
-	{r:128,g:128,b:255},
-	{r:200,g:200,b:255},
-	{r:64,g:64,b:192},
-	{r:0,g:0,b:30}
-];
-/**/
+var colorScheme = [];
 var colorPalette = [];
 var hist = [];
 var initial_diameter = null;
@@ -257,7 +310,8 @@ var fractParams = {};
 function pushHist(params, imageData) {
 	hist.push({
 		fractParams: params.clone(),
-		imageData: imageData
+		imageData: imageData,
+		colorScheme: colorScheme.clone()
 	});
 	if (hist.length > 1) {
 		$('#backBtn').attr('disabled',false);
@@ -271,10 +325,12 @@ function popHist() {
 		hist.pop();
 		var h = hist[hist.length-1];
 		fractParams = h.fractParams.clone();
+		colorScheme = h.colorScheme.clone();
 		loadPreset(fractParams);
 		init();
 		context.putImageData(h.imageData,0,0);
 		createColorPalette();
+		drawColorPalette();
 		updateInfo();
 
 		if (hist.length > 1) {
@@ -425,6 +481,7 @@ function init() {
 function createColorPalette() {
 	// Init color palette
 	colorPalette = [];
+	var baseColors = colorScheme.colors;
 	var stepsPerFade = fractParams.max_iter / (baseColors.length-1);
 	var actBase;
 	var nextBase;
@@ -487,6 +544,10 @@ function loadPreset(preset) {
 	$('#nr_of_workers').val(preset.nrOfWorkers);
 }
 
+function setActiveColorScheme(nr) {
+	colorScheme = colorPresets[nr];
+}
+
 
 function onPageReady() {
 	var i;
@@ -503,6 +564,20 @@ function onPageReady() {
 	loadPreset(presets[presetsSelect.first().val()]);
 	presetsSelect.on('change',function() {
 		loadPreset(presets[$(this).val()]);
+	});
+
+
+	// Fill color scheme select:
+	var colSchemeSelect = $('#colors').empty();
+	for (i = 0; i < colorPresets.length; i++) {
+		el = $('<option value="'+i+'">'+colorPresets[i].name+'</option>');
+		colSchemeSelect.append(el);
+	}
+	setActiveColorScheme(colSchemeSelect.first().val());
+	colSchemeSelect.on('change',function() {
+		setActiveColorScheme($(this).val());
+		createColorPalette();
+		drawColorPalette();
 	});
 
 	init();
@@ -526,6 +601,7 @@ $(document).ready(function(){
 
 	$('#savePngBtn').on('click',function() {
 		$('#outputImage')[0].src = $('#fractCanvas')[0].toDataURL('image/png');
+		$(document).scrollTop($('#outputImage').offset().top);
 	});
 
 
@@ -594,7 +670,7 @@ $(document).ready(function(){
 							
 						</div>
 
-						<img id="outputImage" />
+						
 					</div>
 				</div>
 		    </div>
@@ -605,6 +681,21 @@ $(document).ready(function(){
 	  	<!-- S I D E B A R -->
 	  	<div class="ym-col3 settings">
 		    <div class="ym-cbox">
+		    	<h1>Presets</h1>
+				<form class="ym-form ym-columnar" onsubmit="return false">
+					<h2>Fractals</h2>
+					<div class="ym-fbox-select">
+						<select id="presets" name="presets">
+
+						</select>
+					</div>
+					<h2>Color Schemes</h2>
+					<div class="ym-fbox-select">
+						<select id="colors" name="colors">
+
+						</select>
+					</div>
+				</form>
 				<h1>Fractal settings</h1>
 				
 				<form class="ym-form ym-columnar" onsubmit="return false">
@@ -653,28 +744,15 @@ $(document).ready(function(){
 					<div class="ym-fbox-button">
 						<button id="startCalcBtn" class="ym-play">Start Calc</button><br />
 						<button id="backBtn">Back</button>
-						<button id="savePngBtn">Save as PNG</button>
-					</div>
-				</form>
-
-				<h2>Presets</h2>
-				<form class="ym-form ym-columnar" onsubmit="return false">
-					<h2>Fractals</h2>
-					<div class="ym-fbox-select">
-						<select id="presets" name="presets">
-
-						</select>
-					</div>
-					<h2>Color Schemes</h2>
-					<div class="ym-fbox-select">
-						<select id="presets" name="colors">
-
-						</select>
+						<button id="savePngBtn">Draw to PNG</button>
 					</div>
 				</form>
 		    </div>
 	  	</div>
 	</div>
+
+	<h3>PNG Output:</h3>
+	<img id="outputImage" />
 
 	<footer>
 		&copy; 2012 <a href="mailto:info@alexi.ch">alexander schenkel</a>
