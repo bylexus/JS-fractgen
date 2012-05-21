@@ -1,11 +1,20 @@
 <!DOCTYPE html>
+<!--
+HTML5 Fractal generator
+(c) 2012 Alexander Schenkel, info@alexi.ch
+Purely client-side fractal generator using HTML5 canvas/web workers
+-->
 <html>
 <head>
+<title>HTML5 Fractal Generator</title>
+<meta name="description" content="Fractal Generator (Mandelbrot, Julia), completely written in HTML5/Canvas/WebWorkers" />
+<meta name="keywords" content="Fractals, Mandelbrot, Julia, HTML5, WebWorkers, Canvas" />
+<meta name="author" content="Alexander Schenkel" />
+<meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+
 <link rel="stylesheet" href="css/yaml/core/base.css" type="text/css" />
 <link rel="stylesheet" href="css/yaml/screen/typography.css" type="text/css" />
 <link rel="stylesheet" href="css/yaml/forms/gray-theme.css" type="text/css" />  
-
-
 <style type="text/css">
 /*
  * |-------------------------------------------------------|
@@ -297,14 +306,7 @@ var presets = {
 };
 
 
-
-
-
-
-
-
 var fractParams = {};
-
 
 
 function pushHist(params, imageData) {
