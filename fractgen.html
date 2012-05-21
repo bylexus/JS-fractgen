@@ -171,26 +171,6 @@ var fractParamsMandelbrot = {
 	nrOfWorkers: 2
 };
 
-var fractParamsJulia = {
-	/* Mandelbrot Total as default params */
-	max_betrag_quadrat: 4,
-	max_iter: 80,
-	center_cx: 0,
-	center_cy: 0,
-	diameter_cx: 3.0769,
-	iter_func: 'julia',
-	pic_width: 800,
-	pic_height: 600,
-	min_cx: 0.0,
-	max_cx: 0.0,
-	min_cy: 0.0,
-	max_cy: 0.0,
-	punkt_abstand: 0.0,
-	nrOfWorkers: 2
-};
-
-
-
 var presets = {
 	mandelbrot_total: ObjectMerge(fractParamsMandelbrot,{
 		name: 'Mandelbrot Total'
@@ -219,22 +199,41 @@ var presets = {
 		diameter_cx:0.0022878
 	}),
 
+	mandelbrot_satellite: ObjectMerge(fractParamsMandelbrot,{
+		name: 'Mandelbrot Antenna Satellite',
+		max_iter: 3000,
+		center_cx:  -0.743644786,
+		center_cy:  0.1318252536,
+		diameter_cx:.0000029336,
+		nrOfWorkers: 4
+	}),
 
-/* Mandelbrot "Seahorse tail" */
-/*
-fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 500;
-fractParams.center_cx =  -0.7435669;
-fractParams.center_cy = 0.1314023;
-fractParams.diameter_cx = 0.0022878;
-fractParams.pic_width = 800;
-fractParams.pic_height = 600;
-/**/
+	mandelbrot_seahorse_valley_satellite: ObjectMerge(fractParamsMandelbrot,{
+		name: 'Mandelbrot Seahorse Valley of the Satellite',
+		max_iter: 3000,
+		center_cx:  -0.74364409961,
+		center_cy:  0.13182604688,
+		diameter_cx:0.00000066208,
+		nrOfWorkers: 4
+	}),
 
+	mandelbrot_snowstat: ObjectMerge(fractParamsMandelbrot,{
+		name: 'Mandelbrot Snowstar',
+		max_iter: 400,
+		center_cx:  0.20070234179688,
+		center_cy:  -0.56375779101563,
+		diameter_cx:0.02403828125
+	}),
 
+	
 
-	julia_total: ObjectMerge(fractParamsJulia, {
-		name: 'Julia Total'
+	julia_total: ObjectMerge(fractParamsMandelbrot, {
+		name: 'Julia Total',
+		max_iter: 80,
+		center_cx: 0,
+		center_cy: 0,
+		diameter_cx: 3.0769,
+		iter_func: 'julia'
 	})
 
 };
@@ -247,45 +246,8 @@ fractParams.pic_height = 600;
 
 
 var fractParams = {};
-//var fractParams = fractParamsJulia;
 
 
-
-
-
-/* Mandelbrot "Seahorse valley" */
-/*
-fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 3500;
-fractParams.pic_width =  1980;
-fractParams.pic_height =  1200;
-fractParams.center_cx =  -0.74364409961;
-fractParams.center_cy = 0.13182604688;
-fractParams.diameter_cx = 0.00000066208;
-/**/
-
-/* Mandelbrot "Antenna satelite" */
-/*
-fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 3000;
-fractParams.pic_width =  600;
-fractParams.pic_height =  400;
-fractParams.center_cx =  -0.743644786;
-fractParams.center_cy = 0.1318252536;
-fractParams.diameter_cx = .0000029336;
-fractParams.nrOfWorkers = 4;
-/**/
-
-/* Mandelbrot my own */
-/*
-fractParams.max_betrag_quadrat = 4;
-fractParams.max_iter = 400;
-fractParams.center_cx =  0.20070234179688;
-fractParams.center_cy = -0.56375779101563;
-fractParams.diameter_cx = 0.02403828125;
-fractParams.pic_width =  800;
-fractParams.pic_height =  600;
-/**/
 
 function pushHist(params, imageData) {
 	hist.push({
@@ -528,7 +490,7 @@ function onPageReady() {
 	var presetsSelect = $('#presets').empty();
 	var el;
 	for (i in presets) {
-		if (typeof i === 'string') {
+		if (i != 'clone') {
 			el = $('<option value="'+i+'">'+presets[i].name+'</option>');
 			presetsSelect.append(el);
 		}
