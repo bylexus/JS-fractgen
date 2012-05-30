@@ -227,6 +227,8 @@ var fractParamsMandelbrot = {
 	center_cx: -0.7,
 	center_cy: 0,
 	diameter_cx: 3.0769,
+	initial_diameter_cx: 3.0769, // used for calculating the relative scale factor
+	initial_iter: 40, // used for calculating the relative scale factor
 	iter_func: 'mandelbrot',
 	pic_width: 800,
 	pic_height: 600,
@@ -299,8 +301,12 @@ var presets = {
 		max_iter: 80,
 		center_cx: 0,
 		center_cy: 0,
+		k_r: -0.8,
+		k_i: 0.2,
 		diameter_cx: 3.0769,
-		iter_func: 'julia'
+		iter_func: 'julia',
+		initial_diameter_cx: 3.0769, // used for calculating the relative scale factor
+		initial_iter: 80, // used for calculating the relative scale factor
 	})
 
 };
@@ -419,14 +425,6 @@ function drawFract() {
 			w.postMessage(msg);
 		})(worker,i);
 	}
-
-	
-	
-
-    
-    
-
-	
 }
 
 function updateInfo(milisecsUsed) {
@@ -454,6 +452,9 @@ function init() {
 	fractParams.max_betrag_quadrat = Number($('#max_betrag_quadrat').val());
 	fractParams.iter_func = $('#iter_func').val();
 	fractParams.nrOfWorkers = Number($('#nr_of_workers').val());
+
+	fractParams.k_r = Number($('#julia_r').val());
+	fractParams.k_i = Number($('#julia_i').val());
 
 	if (initial_diameter == null) {
 		initial_diameter = fractParams.diameter_cx;
@@ -544,6 +545,19 @@ function loadPreset(preset) {
 	$('#max_betrag_quadrat').val(preset.max_betrag_quadrat);
 	$('#iter_func').val(preset.iter_func);
 	$('#nr_of_workers').val(preset.nrOfWorkers);
+
+	if (preset.iter_func === 'julia') {
+		$('#julia_params').show();
+	} else {
+		$('#julia_params').hide();
+	}
+
+	if (preset.k_r) {
+		$('#julia_r').val(preset.k_r);
+	}
+	if (preset.k_i) {
+		$('#julia_i').val(preset.k_i);
+	}
 }
 
 function setActiveColorScheme(nr) {
@@ -553,7 +567,7 @@ function setActiveColorScheme(nr) {
 
 function onPageReady() {
 	var i;
-	
+
 	// Fill presets select:
 	var presetsSelect = $('#presets').empty();
 	var el;
@@ -606,22 +620,108 @@ $(document).ready(function(){
 		$(document).scrollTop($('#outputImage').offset().top);
 	});
 
+	$('#iter_func').on('change', function() {
+		if ($(this).val() === 'julia') {
+			$('#julia_params').show();
+		} else {
+			$('#julia_params').hide();
+		}
+	});
 
-	$('#fractCanvas').on('click', function(ev){
-		var offsetX, offsetY;
 
-		console.log(ev);
 
-		$('#diameter_x').val($('#diameter_x').val()*0.5);
-		$('#max_iter').val(($('#max_iter').val()*1.3)|0);
 
-		offsetX = ev.pageX - $(this).offset().left;
-		offsetY = ev.pageY - $(this).offset().top;
+	
 
-		$('#center_cx').val(fractParams.min_cx + offsetX * fractParams.punkt_abstand);
-		$('#center_cy').val(fractParams.max_cy - offsetY * fractParams.punkt_abstand);
-		init();
-		drawFract();
+
+	$('#fractCanvas').data('mouseIsDown',false);
+	$('#fractCanvas').data('mouseMoved',false);
+
+	$('#fractCanvas').on('mousedown', function(ev){
+		var offsetX = ev.pageX - $(this).offset().left;
+		var offsetY = ev.pageY - $(this).offset().top;
+
+		$('#fractCanvas').data('mouseIsDown',true);
+		$('#fractCanvas').data('mouseDownX',offsetX);
+		$('#fractCanvas').data('mouseDownY',offsetY);
+		$('#fractCanvas').data('mouseMoved',false);
+
+		$('#canvasContainer .markBox').remove();
+		var markBox = $('<div class="markBox" style="position: absolute; border: 2px solid white;z-index:10000"></div>');
+		markBox.css('left',offsetX+'px');
+		markBox.css('top',offsetY+'px');
+		markBox.css('width','0');
+		markBox.css('height','0');
+
+
+
+		markBox.on('click', function(ev){
+			if ($('#fractCanvas').data('mouseMoved')) {
+				return;
+			}
+
+
+			var offsetX, offsetY;
+
+			$('#diameter_x').val($('#diameter_x').val()*0.5);
+			$('#max_iter').val(($('#max_iter').val()*1.3)|0);
+
+			offsetX = ev.pageX - $(this).offset().left;
+			offsetY = ev.pageY - $(this).offset().top;
+
+			console.log('click: '+offsetX+':'+offsetY);
+
+			$('#center_cx').val(fractParams.min_cx + offsetX * fractParams.punkt_abstand);
+			$('#center_cy').val(fractParams.max_cy - offsetY * fractParams.punkt_abstand);
+			init();
+			drawFract();
+		});
+
+		markBox.on('mouseup', function() {
+			$('#fractCanvas').data('mouseIsDown',false);
+			if ($('#fractCanvas').data('mouseMoved')) {
+				var minX,maxX,minY,maxY;
+				console.log($(this).width());
+
+
+				var pixelCenterX = (($(this).width()/2+$(this).position().left)) | 0;
+				var pixelCenterY = (($(this).height()/2+$(this).position().top)) | 0;
+
+				var newDiameter_cx = $(this).width() / fractParams.pic_width * fractParams.diameter_cx;
+
+				$('#diameter_x').val(newDiameter_cx);
+				var scaleFactor = fractParams.initial_diameter_cx / newDiameter_cx;
+				console.log(scaleFactor);
+				console.log(Math.log(scaleFactor)/Math.log(2));
+				$('#max_iter').val((fractParams.initial_iter*(Math.pow(1.3,Math.log(scaleFactor)/Math.log(2))))|0);
+
+				$('#center_cx').val(fractParams.min_cx + pixelCenterX * fractParams.punkt_abstand);
+				$('#center_cy').val(fractParams.max_cy - pixelCenterY * fractParams.punkt_abstand);
+
+				$('#canvasContainer .markBox').remove();
+			init();
+			drawFract();
+			}
+		});
+		$('#canvasContainer').append(markBox);
+
+	});
+
+	$('#fractCanvas').on('mousemove', function(ev){
+		if ($('#fractCanvas').data('mouseIsDown')) {
+			var offsetX = ev.pageX - $(this).offset().left;
+			var offsetY = ev.pageY - $(this).offset().top;
+			$('#fractCanvas').data('mouseMoved',true);
+
+			var markBox = $('#canvasContainer .markBox');
+			markBox.css('width',(offsetX - markBox.position().left) + 'px');
+			markBox.css('height',(offsetY - markBox.position().top) + 'px');
+
+		}
+	});
+
+	$('#fractCanvas').on('mouseup', function(ev){
+		console.log('here');
 	});
 });
 
@@ -660,7 +760,9 @@ $(document).ready(function(){
 							<span>maxY: </span><span id="maxYInfo"></span> 
 							<div id="colorPalette"></div>
 						
-							<canvas id="fractCanvas"></canvas>
+							<div id="canvasContainer" style="position: relative">
+								<canvas id="fractCanvas"></canvas>
+							</div>
 
 						
 						
@@ -738,6 +840,16 @@ $(document).ready(function(){
 					  	<option value="mandelbrot">Mandelbrot</option>
 					  	<option value="julia">Julia</option>
 					  </select>
+					</div>
+					<div id="julia_params" style="display:none">
+						<div class="ym-fbox-text">
+							<label for="julia_r">real:</label>
+						  	<input type="text" name="julia_r" id="julia_r" />
+						</div>
+						<div class="ym-fbox-text">
+							<label for="julia_i">imag:</label>
+						  	<input type="text" name="julia_i" id="julia_i" />
+						</div>
 					</div>
 					<div class="ym-fbox-text">
 					  <label for="nr_of_workers"># Workers:</label>

@@ -51,18 +51,15 @@ function iter_mandelbrot(cx,cy,max_betrag_quadrat, max_iter) {
 
 }
 
-function iter_julia(cx,cy,max_betrag_quadrat, max_iter) {
+function iter_julia(cx,cy,max_betrag_quadrat, max_iter, k_r,k_i) {
 	betrag_quadrat = 0;
 	iter = 0;
 	x = cx;
 	y = cy;
 
-	var julia_cx = -0.8;
-	var julia_cy = 0.2;
-
 	while (betrag_quadrat <= max_betrag_quadrat && iter < max_iter) {
-		xt = x * x - y*y + julia_cx;
-		yt = 2*x*y + julia_cy;
+		xt = x * x - y*y + k_r;
+		yt = 2*x*y + k_i;
 		x = xt;
 		y = yt;
 		iter += 1;
@@ -77,6 +74,7 @@ function iter_julia(cx,cy,max_betrag_quadrat, max_iter) {
 function calcFract(params) {
 	var width,height,from_x,to_x,from_y,to_y,min_cx,min_cy,punkt_abstand,max_betrag_quadrat,max_iter,iter_func_txt;
 	var pix_x,pix_y,cx,cy,iter_wert,res,punkt_iteration,index;
+	var julia_r,julia_i;
 	var col = [];
 	var iter_func = iter_mandelbrot;
 	var percDone;
@@ -96,8 +94,11 @@ function calcFract(params) {
 
 
 
+
 	if (iter_func_txt === 'julia') {
 		iter_func = iter_julia;
+		julia_r = Number(params.fractParams.k_r);
+		julia_i = Number(params.fractParams.k_i);
 	}
 	var calcWidth = to_x - from_x;
 	for (pix_x = from_x; pix_x <= to_x; pix_x++) {
@@ -106,7 +107,7 @@ function calcFract(params) {
 		for (pix_y = from_y; pix_y <= to_y; pix_y++) {
 			cy = min_cy + pix_y * punkt_abstand;
 
-			res = iter_func(cx,cy,max_betrag_quadrat, max_iter);
+			res = iter_func(cx,cy,max_betrag_quadrat, max_iter,julia_r,julia_i);
 			iter_wert = res.iterations;
 			col.push(choose_color(iter_wert, max_iter,pix_x,pix_y,res.betrag_quadrat));
 		}
