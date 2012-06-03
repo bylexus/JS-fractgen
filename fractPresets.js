@@ -80,6 +80,14 @@ var presets = {
 		diameter_cx:1.0096719999999999e-7
 	}),
 
+	mandelbrot_fire: ObjectMerge(fractParamsMandelbrot,{
+		name: 'Mandelbrot Fire!',
+		max_iter: 1000,
+		center_cx:  -0.9949091999999999,
+		center_cy:  0.28308639999999996,
+		diameter_cx:0.26592
+	}),
+
 	mandelbrot_lexus_secret: ObjectMerge(fractParamsMandelbrot,{
 		name: 'Mandelbrot Lexus\' Secret Spot',
 		max_iter: 2500,
